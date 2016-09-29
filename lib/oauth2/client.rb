@@ -90,6 +90,13 @@ module OAuth2
 
       url = connection.build_url(url, opts[:params]).to_s
 
+      # Modified      
+      if opts[:body].present? && opts[:body][:redirect_uri].include?("linkedin")
+        a = URI(opts[:body][:redirect_uri])
+        a.query = Rack::Utils.parse_query(a.query).except("code", "state").to_query
+        opts[:body][:redirect_uri] = a.to_s.gsub(/\?\z/, "")
+      end
+      
       response = connection.run_request(verb, url, opts[:body], opts[:headers]) do |req|
         yield(req) if block_given?
       end

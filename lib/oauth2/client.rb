@@ -97,10 +97,21 @@ module OAuth2
         opts[:body][:redirect_uri] = a.to_s.gsub(/\?\z/, "")
       end
       
-      response = connection.run_request(verb, url, opts[:body], opts[:headers]) do |req|
-        yield(req) if block_given?
+      retry_times = 3
+      begin
+        response = connection.run_request(verb, url, opts[:body], opts[:headers]) do |req|
+          yield(req) if block_given?
+        end
+        response = Response.new(response, :parse => opts[:parse])
+      rescue => e
+        SlackNotifier.notify("oauth请求失败, url: #{url}, opts: #{opts}, error: #{e}")
+        if retry_times >= 0
+          retry_times -= 1
+          retry
+        else
+          raise
+        end
       end
-      response = Response.new(response, :parse => opts[:parse])
 
       case response.status
       when 301, 302, 303, 307
